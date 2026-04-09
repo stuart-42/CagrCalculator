@@ -14,10 +14,16 @@
         <p>Project asset growth with inflation-adjusted withdrawals</p>
     </header>
 
+    <!-- Mobile Tab Navigation -->
+    <div class="mobile-tabs" id="mobileTabs">
+        <button class="mobile-tab active" data-tab="input">Portfolio</button>
+        <button class="mobile-tab" data-tab="results">Results</button>
+    </div>
+
     <div class="container">
         <div class="grid-layout">
             <!-- Left Panel - Inputs -->
-            <div class="input-panel">
+            <div class="input-panel" id="inputPanel">
                 <!-- Assets Section -->
                 <div class="card">
                     <div class="card-title">Assets (max 5)</div>
@@ -76,22 +82,17 @@
                             </select>
                         </div>
 
-                        <div class="input-row">
-                            <div class="form-group">
-                                <label>Target Legacy ($ today's value) <span class="info-tip" title="Minimum portfolio value at end date, in today's purchasing power - will be adjusted for inflation">?</span></label>
-                                <input type="number" id="targetLegacy" value="500000" min="0" step="10000">
-                            </div>
-                            <div class="form-group" style="display: flex; flex-direction: column;">
-                                <label>&nbsp;</label>
-                                <button class="btn btn-secondary" id="calcMaxWithdrawal" style="height: 46px;">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <circle cx="12" cy="12" r="10"></circle>
-                                        <path d="M12 6v6l4 2"></path>
-                                    </svg>
-                                    Find Max Withdrawal
-                                </button>
-                            </div>
+                        <div class="form-group">
+                            <label>Target Legacy ($ today's value) <span class="info-tip" title="Minimum portfolio value at end date, in today's purchasing power - will be adjusted for inflation">?</span></label>
+                            <input type="number" id="targetLegacy" value="500000" min="0" step="10000">
                         </div>
+                        <button class="btn btn-secondary" id="calcMaxWithdrawal" style="width: 100%;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <path d="M12 6v6l4 2"></path>
+                            </svg>
+                            Find Max Withdrawal
+                        </button>
                     </div>
 
                     <div class="divider"></div>
@@ -183,7 +184,9 @@
 
                 <div class="card">
                     <div class="card-title">Yearly Breakdown</div>
-                    <div class="table-container" style="max-height: 500px; overflow-y: auto;">
+
+                    <!-- Desktop table -->
+                    <div class="table-container desktop-only" style="max-height: 500px; overflow-y: auto;">
                         <table id="resultsTable">
                             <thead>
                                 <tr>
@@ -205,6 +208,13 @@
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+
+                    <!-- Mobile card list -->
+                    <div class="mobile-year-list mobile-only" id="mobileYearList">
+                        <p style="text-align: center; color: var(--text-muted); padding: 40px;">
+                            Add assets and click Calculate to see projections
+                        </p>
                     </div>
                 </div>
             </div>

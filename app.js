@@ -133,9 +133,48 @@ function clearResults() {
         <tr><td colspan="8" style="text-align: center; color: var(--text-muted); padding: 40px;">
             Add assets and click Calculate to see projections
         </td></tr>`;
+    const mobileList = document.getElementById('mobileYearList');
+    if (mobileList) {
+        mobileList.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 40px;">Add assets and click Calculate to see projections</p>';
+    }
     if (chart) {
         chart.destroy();
         chart = null;
+    }
+}
+
+// Mobile tab switching
+function initMobileTabs() {
+    const tabs = document.querySelectorAll('.mobile-tab');
+    const inputPanel = document.getElementById('inputPanel');
+    const resultsSection = document.getElementById('resultsSection');
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+
+            const target = tab.dataset.tab;
+            if (target === 'input') {
+                inputPanel.classList.remove('tab-hidden');
+                resultsSection.classList.add('tab-hidden');
+            } else {
+                inputPanel.classList.add('tab-hidden');
+                resultsSection.classList.remove('tab-hidden');
+            }
+        });
+    });
+}
+
+// Switch to results tab on mobile after calculation
+function switchToResultsTab() {
+    if (window.innerWidth <= 768) {
+        const tabs = document.querySelectorAll('.mobile-tab');
+        tabs.forEach(t => t.classList.remove('active'));
+        tabs[1].classList.add('active');
+        document.getElementById('inputPanel').classList.add('tab-hidden');
+        document.getElementById('resultsSection').classList.remove('tab-hidden');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 }
 
@@ -143,6 +182,12 @@ function clearResults() {
 document.addEventListener('DOMContentLoaded', () => {
     loadData();
     renderAssets();
+    initMobileTabs();
+
+    // Set initial tab state on mobile
+    if (window.innerWidth <= 768) {
+        document.getElementById('resultsSection').classList.add('tab-hidden');
+    }
 
     document.getElementById('addAssetBtn').addEventListener('click', () => {
         if (assets.length < 5) {
@@ -151,8 +196,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    document.getElementById('calculateBtn').addEventListener('click', () => calculate());
-    document.getElementById('calcMaxWithdrawal').addEventListener('click', () => calculateMaxWithdrawal());
+    document.getElementById('calculateBtn').addEventListener('click', () => {
+        calculate();
+        switchToResultsTab();
+    });
+    document.getElementById('calcMaxWithdrawal').addEventListener('click', () => {
+        calculateMaxWithdrawal();
+        switchToResultsTab();
+    });
     document.getElementById('saveDataBtn').addEventListener('click', () => saveData());
     document.getElementById('clearDataBtn').addEventListener('click', () => clearData());
 
@@ -655,11 +706,14 @@ function updateChart(years, assetsList) {
             },
             plugins: {
                 legend: {
-                    position: 'top',
+                    position: window.innerWidth <= 768 ? 'bottom' : 'top',
                     labels: {
                         color: '#94a3b8',
                         usePointStyle: true,
-                        padding: 20
+                        padding: window.innerWidth <= 768 ? 10 : 20,
+                        font: {
+                            size: window.innerWidth <= 768 ? 10 : 12
+                        }
                     }
                 },
                 tooltip: {
@@ -682,7 +736,9 @@ function updateChart(years, assetsList) {
                         color: 'rgba(42, 53, 72, 0.5)'
                     },
                     ticks: {
-                        color: '#64748b'
+                        color: '#64748b',
+                        maxTicksLimit: window.innerWidth <= 768 ? 8 : 20,
+                        maxRotation: window.innerWidth <= 768 ? 45 : 0
                     }
                 },
                 y: {
@@ -702,8 +758,8 @@ function updateChart(years, assetsList) {
 }
 
 function updateTable(years) {
+    // Desktop table
     const tbody = document.getElementById('tableBody');
-
     tbody.innerHTML = years.map(y => {
         const assetDetails = y.assetDetails.map(a => {
             const safeName = escapeHtml(a.name);
@@ -730,6 +786,51 @@ function updateTable(years) {
                 <td class="${y.withdrawalNet > 0 ? 'positive' : ''}">${y.withdrawalNet > 0 ? formatCurrency(y.withdrawalNet) : '-'}</td>
                 <td style="font-size: 0.75rem; text-align: left; font-family: 'DM Sans', sans-serif;">${assetDetails}</td>
             </tr>
+        `;
+    }).join('');
+
+    // Mobile year cards
+    const mobileList = document.getElementById('mobileYearList');
+    if (!mobileList) return;
+
+    mobileList.innerHTML = years.map(y => {
+        const assetLines = y.assetDetails.map(a => {
+            const safeName = escapeHtml(a.name);
+            let line = `<strong>${safeName}</strong>: ${formatCurrency(a.value)}`;
+            if (a.withdrawalGross > 0) {
+                line += ` <span class="negative">-${formatCurrency(a.withdrawalGross)}</span>`;
+            }
+            return line;
+        }).join('<br>');
+
+        return `
+            <div class="year-card">
+                <div class="year-card-header">
+                    <span class="year-label">${y.year}</span>
+                    <span class="year-total ${y.totalNominal > 0 ? 'positive' : 'negative'}">${formatCurrency(y.totalNominal)}</span>
+                </div>
+                <div class="year-card-grid">
+                    <div class="year-card-item">
+                        <span class="yc-label">Real Value</span>
+                        <span class="yc-value">${formatCurrency(y.totalReal)}</span>
+                    </div>
+                    <div class="year-card-item">
+                        <span class="yc-label">Protected</span>
+                        <span class="yc-value" style="color: var(--accent-purple);">${formatCurrency(y.protectedTotal)}</span>
+                    </div>
+                    ${y.withdrawalGross > 0 ? `
+                    <div class="year-card-item">
+                        <span class="yc-label">Withdrawal</span>
+                        <span class="yc-value negative">-${formatCurrency(y.withdrawalGross)}</span>
+                    </div>
+                    <div class="year-card-item">
+                        <span class="yc-label">Net After Tax</span>
+                        <span class="yc-value positive">${formatCurrency(y.withdrawalNet)}</span>
+                    </div>
+                    ` : ''}
+                </div>
+                <div class="year-card-assets">${assetLines}</div>
+            </div>
         `;
     }).join('');
 }
