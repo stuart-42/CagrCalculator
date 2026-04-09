@@ -25,6 +25,8 @@ const DEFAULT_SETTINGS = {
 // Local Storage Keys
 const STORAGE_KEY_ASSETS = 'cagr_calculator_assets';
 const STORAGE_KEY_SETTINGS = 'cagr_calculator_settings';
+const STORAGE_KEY_VERSION = 'cagr_calculator_version';
+const CURRENT_VERSION = 2; // Bump to invalidate old default-asset data
 
 // Escape HTML to prevent XSS when inserting user input into innerHTML
 function escapeHtml(str) {
@@ -69,6 +71,14 @@ function saveData() {
 // Load data from local storage
 function loadData() {
     try {
+        // Wipe stale data from previous versions (which had hardcoded defaults)
+        const storedVersion = parseInt(localStorage.getItem(STORAGE_KEY_VERSION)) || 0;
+        if (storedVersion < CURRENT_VERSION) {
+            localStorage.removeItem(STORAGE_KEY_ASSETS);
+            localStorage.removeItem(STORAGE_KEY_SETTINGS);
+            localStorage.setItem(STORAGE_KEY_VERSION, CURRENT_VERSION);
+        }
+
         const savedAssets = localStorage.getItem(STORAGE_KEY_ASSETS);
         assets = [];
         if (savedAssets) {
@@ -95,9 +105,6 @@ function loadData() {
 // Clear saved data
 function clearData() {
     if (confirm('Are you sure you want to reset? This will clear all saved data and remove all assets.')) {
-        localStorage.removeItem(STORAGE_KEY_ASSETS);
-        localStorage.removeItem(STORAGE_KEY_SETTINGS);
-
         assets = [];
 
         Object.keys(DEFAULT_SETTINGS).forEach(key => {
@@ -105,6 +112,8 @@ function clearData() {
             if (el) el.value = DEFAULT_SETTINGS[key];
         });
 
+        // Save the empty state so it persists through reload
+        saveData();
         renderAssets();
         clearResults();
         showSaveNotification('All data cleared!');
@@ -427,9 +436,9 @@ function calculateMaxWithdrawal() {
     while (high - low > 100 && iterations < maxIterations) {
         const mid = Math.floor((low + high) / 2);
         document.getElementById('annualWithdrawal').value = mid;
-        const finalValue = calculate(true);
+        const result = calculate(true);
 
-        if (finalValue >= targetLegacy) {
+        if (result.sustainable && result.finalValue >= targetLegacy) {
             bestWithdrawal = mid;
             low = mid;
         } else {
@@ -448,7 +457,7 @@ function calculateMaxWithdrawal() {
 }
 
 function calculate(silent = false) {
-    if (assets.length === 0) return 0;
+    if (assets.length === 0) return silent ? { finalValue: 0, sustainable: false } : 0;
 
     const cagrFloor = parseFloat(document.getElementById('cagrFloor').value) || 0;
     const retirementYear = parseInt(document.getElementById('retirementYear').value) || 2035;
@@ -477,6 +486,7 @@ function calculate(silent = false) {
     let totalTaxPaid = 0;
     let peakValue = 0;
     let cumulativeInflation = 1;
+    let sustainable = true;
 
     for (let year = currentYear; year <= endYear; year++) {
         // Add contributions before retirement (at start of year)
@@ -558,6 +568,11 @@ function calculate(silent = false) {
         const totalTaxThisYear = withdrawalAllocations.reduce((sum, w) => sum + w.tax, 0);
         const totalNetWithdrawal = withdrawalAllocations.reduce((sum, w) => sum + w.net, 0);
 
+        // Check sustainability: actual withdrawal should meet planned withdrawal
+        if (withdrawal > 0 && totalGrossWithdrawal < withdrawal * 0.99) {
+            sustainable = false;
+        }
+
         const yearData = {
             year,
             assetDetails: assetValues.map((a) => {
@@ -616,7 +631,7 @@ function calculate(silent = false) {
     const protectedFinalValue = years[years.length - 1]?.protectedTotal || 0;
 
     if (silent) {
-        return finalValue;
+        return { finalValue, sustainable };
     }
 
     const totalContributions = assets.reduce((sum, a) => sum + (a.contribution || 0), 0);
