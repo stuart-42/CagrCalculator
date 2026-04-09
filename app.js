@@ -25,6 +25,8 @@ const DEFAULT_SETTINGS = {
 // Local Storage Keys
 const STORAGE_KEY_ASSETS = 'cagr_calculator_assets';
 const STORAGE_KEY_SETTINGS = 'cagr_calculator_settings';
+const STORAGE_KEY_VERSION = 'cagr_calculator_version';
+const CURRENT_VERSION = 2; // Bump to invalidate old default-asset data
 
 // Escape HTML to prevent XSS when inserting user input into innerHTML
 function escapeHtml(str) {
@@ -69,6 +71,14 @@ function saveData() {
 // Load data from local storage
 function loadData() {
     try {
+        // Wipe stale data from previous versions (which had hardcoded defaults)
+        const storedVersion = parseInt(localStorage.getItem(STORAGE_KEY_VERSION)) || 0;
+        if (storedVersion < CURRENT_VERSION) {
+            localStorage.removeItem(STORAGE_KEY_ASSETS);
+            localStorage.removeItem(STORAGE_KEY_SETTINGS);
+            localStorage.setItem(STORAGE_KEY_VERSION, CURRENT_VERSION);
+        }
+
         const savedAssets = localStorage.getItem(STORAGE_KEY_ASSETS);
         assets = [];
         if (savedAssets) {
@@ -95,9 +105,6 @@ function loadData() {
 // Clear saved data
 function clearData() {
     if (confirm('Are you sure you want to reset? This will clear all saved data and remove all assets.')) {
-        localStorage.removeItem(STORAGE_KEY_ASSETS);
-        localStorage.removeItem(STORAGE_KEY_SETTINGS);
-
         assets = [];
 
         Object.keys(DEFAULT_SETTINGS).forEach(key => {
@@ -105,6 +112,8 @@ function clearData() {
             if (el) el.value = DEFAULT_SETTINGS[key];
         });
 
+        // Save the empty state so it persists through reload
+        saveData();
         renderAssets();
         clearResults();
         showSaveNotification('All data cleared!');
