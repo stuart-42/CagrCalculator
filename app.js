@@ -436,9 +436,9 @@ function calculateMaxWithdrawal() {
     while (high - low > 100 && iterations < maxIterations) {
         const mid = Math.floor((low + high) / 2);
         document.getElementById('annualWithdrawal').value = mid;
-        const finalValue = calculate(true);
+        const result = calculate(true);
 
-        if (finalValue >= targetLegacy) {
+        if (result.sustainable && result.finalValue >= targetLegacy) {
             bestWithdrawal = mid;
             low = mid;
         } else {
@@ -457,7 +457,7 @@ function calculateMaxWithdrawal() {
 }
 
 function calculate(silent = false) {
-    if (assets.length === 0) return 0;
+    if (assets.length === 0) return silent ? { finalValue: 0, sustainable: false } : 0;
 
     const cagrFloor = parseFloat(document.getElementById('cagrFloor').value) || 0;
     const retirementYear = parseInt(document.getElementById('retirementYear').value) || 2035;
@@ -486,6 +486,7 @@ function calculate(silent = false) {
     let totalTaxPaid = 0;
     let peakValue = 0;
     let cumulativeInflation = 1;
+    let sustainable = true;
 
     for (let year = currentYear; year <= endYear; year++) {
         // Add contributions before retirement (at start of year)
@@ -567,6 +568,11 @@ function calculate(silent = false) {
         const totalTaxThisYear = withdrawalAllocations.reduce((sum, w) => sum + w.tax, 0);
         const totalNetWithdrawal = withdrawalAllocations.reduce((sum, w) => sum + w.net, 0);
 
+        // Check sustainability: actual withdrawal should meet planned withdrawal
+        if (withdrawal > 0 && totalGrossWithdrawal < withdrawal * 0.99) {
+            sustainable = false;
+        }
+
         const yearData = {
             year,
             assetDetails: assetValues.map((a) => {
@@ -625,7 +631,7 @@ function calculate(silent = false) {
     const protectedFinalValue = years[years.length - 1]?.protectedTotal || 0;
 
     if (silent) {
-        return finalValue;
+        return { finalValue, sustainable };
     }
 
     const totalContributions = assets.reduce((sum, a) => sum + (a.contribution || 0), 0);
