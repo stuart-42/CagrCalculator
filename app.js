@@ -442,10 +442,6 @@ function calculateMaxWithdrawal() {
     let iterations = 0;
     const maxIterations = 50;
 
-    // Only require sustainability when protected assets exist, to prevent
-    // protected growth from masking unprotected depletion. Without protected
-    // assets, the legacy check alone is sufficient — a drained portfolio
-    // naturally fails the finalValue >= targetLegacy test.
     const hasProtected = assets.some(a => a.protected);
 
     while (high - low > 0.01 && iterations < maxIterations) {
@@ -453,8 +449,11 @@ function calculateMaxWithdrawal() {
         document.getElementById('annualWithdrawal').value = mid;
         const result = calculate(true);
 
+        // Exclude protected assets from legacy check so their growth
+        // doesn't inflate the max withdrawal from unprotected assets
+        const valueForLegacy = result.finalValue - result.protectedFinalValue;
         const passes = hasProtected
-            ? (result.sustainable && result.finalValue >= targetLegacy)
+            ? (result.sustainable && valueForLegacy >= targetLegacy)
             : (result.finalValue >= targetLegacy);
 
         if (passes) {
@@ -651,7 +650,7 @@ function calculate(silent = false) {
     const protectedFinalValue = years[years.length - 1]?.protectedTotal || 0;
 
     if (silent) {
-        return { finalValue, sustainable };
+        return { finalValue, protectedFinalValue, sustainable };
     }
 
     const totalContributions = assets.reduce((sum, a) => sum + (a.contribution || 0), 0);
