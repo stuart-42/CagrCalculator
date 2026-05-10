@@ -478,7 +478,6 @@ function calculateMaxWithdrawal() {
     calculate();
 
     // Check if unprotected assets can meet the target even with $0 withdrawal
-    const hasProtected = assets.some(a => a.protected);
     if (bestWithdrawal === 0) {
         document.getElementById('annualWithdrawal').value = 0;
         const check = calculate(true);
