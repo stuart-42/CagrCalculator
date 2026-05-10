@@ -453,11 +453,11 @@ function calculateMaxWithdrawal() {
         let passes;
 
         if (targetLegacy === 0) {
-            // Target $0: find withdrawal that drains unprotected to ~$0 at end.
-            // Portfolio must survive to the final year (pre-withdrawal value > 0)
-            // so withdrawals are spread across all years, not front-loaded.
-            const endValue = hasProtected ? unprotectedEnd : result.finalValue;
-            passes = endValue > 0;
+            // Target $0: drain unprotected to ~$0 by end year.
+            // Allow shortfall ONLY in the final year — every prior year must be
+            // fully funded. The largest withdrawal satisfying this naturally
+            // leaves unprotected at ~$0 after the final year's drain.
+            passes = !result.shortfallBeforeEnd;
         } else if (hasProtected) {
             passes = result.sustainable && unprotectedEnd >= targetLegacy;
         } else {
@@ -529,6 +529,7 @@ function calculate(silent = false) {
     let peakValue = 0;
     let cumulativeInflation = 1;
     let sustainable = true;
+    let shortfallBeforeEnd = false; // shortfall in any year except the last
 
     for (let year = currentYear; year <= endYear; year++) {
         // Add contributions before retirement (at start of year)
@@ -613,6 +614,11 @@ function calculate(silent = false) {
         // Check sustainability: actual withdrawal should meet planned withdrawal
         if (withdrawal > 0 && totalGrossWithdrawal < withdrawal * 0.99) {
             sustainable = false;
+            // Track shortfall specifically for years BEFORE the last,
+            // so the binary search can allow the portfolio to drain in the final year only
+            if (year < endYear) {
+                shortfallBeforeEnd = true;
+            }
         }
 
         const yearData = {
@@ -673,7 +679,7 @@ function calculate(silent = false) {
     const protectedFinalValue = years[years.length - 1]?.protectedTotal || 0;
 
     if (silent) {
-        return { finalValue, protectedFinalValue, sustainable };
+        return { finalValue, protectedFinalValue, sustainable, shortfallBeforeEnd };
     }
 
     const totalContributions = assets.reduce((sum, a) => sum + (a.contribution || 0), 0);
