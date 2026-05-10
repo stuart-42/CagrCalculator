@@ -433,8 +433,8 @@ function calculateMaxWithdrawal() {
     let iterations = 0;
     const maxIterations = 50;
 
-    while (high - low > 100 && iterations < maxIterations) {
-        const mid = Math.floor((low + high) / 2);
+    while (high - low > 0.01 && iterations < maxIterations) {
+        const mid = (low + high) / 2;
         document.getElementById('annualWithdrawal').value = mid;
         const result = calculate(true);
 
@@ -447,12 +447,13 @@ function calculateMaxWithdrawal() {
         iterations++;
     }
 
+    bestWithdrawal = Math.floor(bestWithdrawal * 100) / 100;
     document.getElementById('annualWithdrawal').value = bestWithdrawal;
     calculate();
 
     const legacyTodayFormatted = formatCurrency(targetLegacyToday);
     const legacyNominalFormatted = formatCurrency(targetLegacy);
-    const withdrawalFormatted = formatCurrency(bestWithdrawal);
+    const withdrawalFormatted = formatCurrency(bestWithdrawal, 2);
     alert(`Maximum sustainable withdrawal: ${withdrawalFormatted}/year (in today's dollars)\n\nThis will leave approximately ${legacyNominalFormatted} at end date\n(equivalent to ${legacyTodayFormatted} in today's purchasing power).`);
 }
 
