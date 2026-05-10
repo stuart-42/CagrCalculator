@@ -433,7 +433,7 @@ function calculateMaxWithdrawal() {
     let iterations = 0;
     const maxIterations = 50;
 
-    while (high - low > 100 && iterations < maxIterations) {
+    while (high - low > 1 && iterations < maxIterations) {
         const mid = Math.floor((low + high) / 2);
         document.getElementById('annualWithdrawal').value = mid;
         const result = calculate(true);
