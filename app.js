@@ -13,7 +13,6 @@ let chart = null;
 
 // Default settings
 const DEFAULT_SETTINGS = {
-    cagrFloor: 10,
     retirementYear: 2035,
     endYear: 2060,
     annualWithdrawal: 50000,
@@ -26,7 +25,7 @@ const DEFAULT_SETTINGS = {
 const STORAGE_KEY_ASSETS = 'cagr_calculator_assets';
 const STORAGE_KEY_SETTINGS = 'cagr_calculator_settings';
 const STORAGE_KEY_VERSION = 'cagr_calculator_version';
-const CURRENT_VERSION = 2; // Bump to invalidate old default-asset data
+const CURRENT_VERSION = 3;
 
 // Escape HTML to prevent XSS when inserting user input into innerHTML
 function escapeHtml(str) {
@@ -43,6 +42,7 @@ function saveData() {
             units: a.units,
             price: a.price,
             cagr: a.cagr,
+            cagrFloor: a.cagrFloor,
             reduction: a.reduction,
             contribution: a.contribution || 0,
             taxRate: a.taxRate || 0,
@@ -51,7 +51,6 @@ function saveData() {
         localStorage.setItem(STORAGE_KEY_ASSETS, JSON.stringify(assetData));
 
         const settings = {
-            cagrFloor: document.getElementById('cagrFloor').value,
             retirementYear: document.getElementById('retirementYear').value,
             endYear: document.getElementById('endYear').value,
             annualWithdrawal: document.getElementById('annualWithdrawal').value,
@@ -231,6 +230,7 @@ function addAsset(data = {}) {
         units: data.units || 0,
         price: data.price || 0,
         cagr: data.cagr || 10,
+        cagrFloor: data.cagrFloor ?? 10,
         reduction: data.reduction || 1,
         contribution: data.contribution || 0,
         taxRate: data.taxRate || 0,
@@ -343,6 +343,11 @@ function renderAssets() {
                                 onchange="updateAsset(${asset.id}, 'reduction', this.value)">
                         </div>
                         <div class="asset-detail full-width">
+                            <label>CAGR Floor (minimum %)</label>
+                            <input type="number" value="${asset.cagrFloor}" step="0.1" min="0" max="100"
+                                onchange="updateAsset(${asset.id}, 'cagrFloor', this.value)">
+                        </div>
+                        <div class="asset-detail full-width">
                             <label>Annual Contribution ($/yr until retirement)</label>
                             <input type="number" value="${asset.contribution}" step="100"
                                 onchange="updateAsset(${asset.id}, 'contribution', this.value)">
@@ -394,6 +399,10 @@ function renderAssets() {
                     <div class="asset-detail">
                         <label>Reduction</label>
                         <span>${asset.reduction}%/yr</span>
+                    </div>
+                    <div class="asset-detail">
+                        <label>Floor</label>
+                        <span>${asset.cagrFloor}%</span>
                     </div>
                     ${asset.contribution > 0 ? `
                     <div class="asset-detail full-width">
@@ -460,7 +469,6 @@ function calculateMaxWithdrawal() {
 function calculate(silent = false) {
     if (assets.length === 0) return silent ? { finalValue: 0, sustainable: false } : 0;
 
-    const cagrFloor = parseFloat(document.getElementById('cagrFloor').value) || 0;
     const retirementYear = parseInt(document.getElementById('retirementYear').value) || 2035;
     const endYear = parseInt(document.getElementById('endYear').value) || 2060;
     const baseWithdrawal = parseFloat(document.getElementById('annualWithdrawal').value) || 0;
@@ -477,6 +485,7 @@ function calculate(silent = false) {
         unitPrice: a.price,
         units: a.units,
         currentCagr: a.cagr,
+        cagrFloor: a.cagrFloor ?? 10,
         reduction: a.reduction,
         contribution: a.contribution || 0,
         taxRate: a.taxRate || 0,
@@ -615,7 +624,7 @@ function calculate(silent = false) {
         // Apply growth for next year
         assetValues = assetValues.map((a) => {
             const growth = 1 + (a.currentCagr / 100);
-            const newCagr = Math.max(cagrFloor, a.currentCagr - a.reduction);
+            const newCagr = Math.max(a.cagrFloor, a.currentCagr - a.reduction);
             return {
                 ...a,
                 value: a.value * growth,
