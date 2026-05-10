@@ -469,6 +469,22 @@ function calculateMaxWithdrawal() {
     document.getElementById('annualWithdrawal').value = bestWithdrawal;
     calculate();
 
+    // Check if unprotected assets can meet the target even with $0 withdrawal
+    const hasProtected = assets.some(a => a.protected);
+    if (bestWithdrawal === 0) {
+        document.getElementById('annualWithdrawal').value = 0;
+        const check = calculate(true);
+        const valueForLegacy = hasProtected
+            ? check.finalValue - check.protectedFinalValue
+            : check.finalValue;
+
+        if (valueForLegacy < targetLegacy) {
+            alert(`Unable to meet legacy target.\n\nYour ${hasProtected ? 'unprotected ' : ''}assets are projected to reach ${formatCurrency(valueForLegacy)} by end date, which is below the ${formatCurrency(targetLegacy)} target (${formatCurrency(targetLegacyToday)} in today's dollars).\n\nConsider increasing contributions, adjusting CAGR assumptions, or lowering the legacy target.`);
+            calculate();
+            return;
+        }
+    }
+
     const legacyTodayFormatted = formatCurrency(targetLegacyToday);
     const legacyNominalFormatted = formatCurrency(targetLegacy);
     const withdrawalFormatted = formatCurrency(bestWithdrawal, 2);
