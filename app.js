@@ -449,12 +449,20 @@ function calculateMaxWithdrawal() {
         document.getElementById('annualWithdrawal').value = mid;
         const result = calculate(true);
 
-        // Exclude protected assets from legacy check so their growth
-        // doesn't inflate the max withdrawal from unprotected assets
-        const valueForLegacy = result.finalValue - result.protectedFinalValue;
-        const passes = hasProtected
-            ? (result.sustainable && valueForLegacy >= targetLegacy)
-            : (result.finalValue >= targetLegacy);
+        const unprotectedEnd = result.finalValue - result.protectedFinalValue;
+        let passes;
+
+        if (targetLegacy === 0) {
+            // Target $0: find withdrawal that drains unprotected to ~$0 at end.
+            // Portfolio must survive to the final year (pre-withdrawal value > 0)
+            // so withdrawals are spread across all years, not front-loaded.
+            const endValue = hasProtected ? unprotectedEnd : result.finalValue;
+            passes = endValue > 0;
+        } else if (hasProtected) {
+            passes = result.sustainable && unprotectedEnd >= targetLegacy;
+        } else {
+            passes = result.finalValue >= targetLegacy;
+        }
 
         if (passes) {
             bestWithdrawal = mid;
