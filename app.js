@@ -442,10 +442,6 @@ function calculateMaxWithdrawal() {
     let iterations = 0;
     const maxIterations = 50;
 
-    // Only require sustainability when protected assets exist, to prevent
-    // protected growth from masking unprotected depletion. Without protected
-    // assets, the legacy check alone is sufficient — a drained portfolio
-    // naturally fails the finalValue >= targetLegacy test.
     const hasProtected = assets.some(a => a.protected);
 
     while (high - low > 0.01 && iterations < maxIterations) {
@@ -453,9 +449,20 @@ function calculateMaxWithdrawal() {
         document.getElementById('annualWithdrawal').value = mid;
         const result = calculate(true);
 
-        const passes = hasProtected
-            ? (result.sustainable && result.finalValue >= targetLegacy)
-            : (result.finalValue >= targetLegacy);
+        const unprotectedEnd = result.finalValue - result.protectedFinalValue;
+        let passes;
+
+        if (targetLegacy === 0) {
+            // Target $0: find withdrawal that drains unprotected to ~$0 at end.
+            // Portfolio must survive to the final year (pre-withdrawal value > 0)
+            // so withdrawals are spread across all years, not front-loaded.
+            const endValue = hasProtected ? unprotectedEnd : result.finalValue;
+            passes = endValue > 0;
+        } else if (hasProtected) {
+            passes = result.sustainable && unprotectedEnd >= targetLegacy;
+        } else {
+            passes = result.finalValue >= targetLegacy;
+        }
 
         if (passes) {
             bestWithdrawal = mid;
@@ -469,6 +476,22 @@ function calculateMaxWithdrawal() {
     bestWithdrawal = Math.floor(bestWithdrawal * 100) / 100;
     document.getElementById('annualWithdrawal').value = bestWithdrawal;
     calculate();
+
+    // Check if unprotected assets can meet the target even with $0 withdrawal
+    const hasProtected = assets.some(a => a.protected);
+    if (bestWithdrawal === 0) {
+        document.getElementById('annualWithdrawal').value = 0;
+        const check = calculate(true);
+        const valueForLegacy = hasProtected
+            ? check.finalValue - check.protectedFinalValue
+            : check.finalValue;
+
+        if (valueForLegacy < targetLegacy) {
+            alert(`Unable to meet legacy target.\n\nYour ${hasProtected ? 'unprotected ' : ''}assets are projected to reach ${formatCurrency(valueForLegacy)} by end date, which is below the ${formatCurrency(targetLegacy)} target (${formatCurrency(targetLegacyToday)} in today's dollars).\n\nConsider increasing contributions, adjusting CAGR assumptions, or lowering the legacy target.`);
+            calculate();
+            return;
+        }
+    }
 
     const legacyTodayFormatted = formatCurrency(targetLegacyToday);
     const legacyNominalFormatted = formatCurrency(targetLegacy);
@@ -651,7 +674,7 @@ function calculate(silent = false) {
     const protectedFinalValue = years[years.length - 1]?.protectedTotal || 0;
 
     if (silent) {
-        return { finalValue, sustainable };
+        return { finalValue, protectedFinalValue, sustainable };
     }
 
     const totalContributions = assets.reduce((sum, a) => sum + (a.contribution || 0), 0);
