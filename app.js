@@ -564,20 +564,21 @@ function calculate(silent = false) {
                     taxRate: a.taxRate
                 }));
             } else if (withdrawalStrategy === 'protect') {
-                const sorted = [...assetValues].filter(a => a.value > 0 && !a.protected).sort((a, b) => a.value - b.value);
+                const indexed = assetValues.map((a, i) => ({ ...a, idx: i }));
+                const sorted = indexed.filter(a => a.value > 0 && !a.protected).sort((a, b) => a.value - b.value);
                 let remaining = withdrawal;
-                const allocMap = {};
+                const allocByIndex = {};
 
                 for (const asset of sorted) {
                     if (remaining <= 0) break;
                     const take = Math.min(remaining, asset.value);
-                    allocMap[asset.name] = take;
+                    allocByIndex[asset.idx] = take;
                     remaining -= take;
                 }
 
-                withdrawalAllocations = assetValues.map(a => ({
+                withdrawalAllocations = assetValues.map((a, i) => ({
                     name: a.name,
-                    gross: allocMap[a.name] || 0,
+                    gross: allocByIndex[i] || 0,
                     taxRate: a.taxRate
                 }));
             }
@@ -612,8 +613,8 @@ function calculate(silent = false) {
 
         const yearData = {
             year,
-            assetDetails: assetValues.map((a) => {
-                const alloc = withdrawalAllocations.find(w => w.name === a.name) || { gross: 0, tax: 0, net: 0 };
+            assetDetails: assetValues.map((a, i) => {
+                const alloc = withdrawalAllocations[i] || { gross: 0, tax: 0, net: 0 };
                 return {
                     name: a.name,
                     value: a.value,
@@ -637,8 +638,8 @@ function calculate(silent = false) {
         years.push(yearData);
 
         // Apply withdrawal
-        assetValues = assetValues.map(a => {
-            const alloc = withdrawalAllocations.find(w => w.name === a.name) || { gross: 0 };
+        assetValues = assetValues.map((a, i) => {
+            const alloc = withdrawalAllocations[i] || { gross: 0 };
             return {
                 ...a,
                 value: Math.max(0, a.value - alloc.gross)
