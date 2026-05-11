@@ -735,7 +735,7 @@ function updateChart(years, assetsList) {
         ...assetsList.map((asset, index) => ({
             label: asset.name,
             data: years.map(y => {
-                const detail = y.assetDetails.find(d => d.name === asset.name);
+                const detail = y.assetDetails[index];
                 return detail ? detail.value : 0;
             }),
             borderColor: ASSET_COLORS[index % ASSET_COLORS.length],
