@@ -450,19 +450,8 @@ function calculateMaxWithdrawal() {
         const result = calculate(true);
 
         const unprotectedEnd = result.finalValue - result.protectedFinalValue;
-        let passes;
-
-        if (targetLegacy === 0) {
-            // Target $0: drain unprotected to ~$0 by end year.
-            // Allow shortfall ONLY in the final year — every prior year must be
-            // fully funded. The largest withdrawal satisfying this naturally
-            // leaves unprotected at ~$0 after the final year's drain.
-            passes = !result.shortfallBeforeEnd;
-        } else if (hasProtected) {
-            passes = result.sustainable && unprotectedEnd >= targetLegacy;
-        } else {
-            passes = result.finalValue >= targetLegacy;
-        }
+        const relevantEnd = hasProtected ? unprotectedEnd : result.finalValue;
+        const passes = !result.shortfallBeforeEnd && relevantEnd >= targetLegacy;
 
         if (passes) {
             bestWithdrawal = mid;
