@@ -689,7 +689,9 @@ function calculate(silent = false) {
     const targetLegacyToday = parseFloat(document.getElementById('targetLegacy').value) || 0;
     const yearsToEnd = endYear - currentYear;
     const targetLegacyNominal = targetLegacyToday * Math.pow(1 + inflationRate, yearsToEnd);
-    const legacyMet = finalValue >= targetLegacyNominal;
+    const hasProtected = assets.some(a => a.protected);
+    const valueForLegacy = hasProtected ? finalValue - protectedFinalValue : finalValue;
+    const legacyMet = valueForLegacy >= targetLegacyNominal;
 
     document.getElementById('summaryStart').textContent = formatCurrency(startValue);
     document.getElementById('summaryPeak').textContent = formatCurrency(peakValue);
